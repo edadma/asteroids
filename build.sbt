@@ -17,6 +17,8 @@ lazy val asteroids = project
       "-unchecked",
       "-language:implicitConversions",
     ),
+    // Ship an optimized native binary. Flip to `Mode.debug` for faster link times while iterating.
+    nativeConfig ~= { _.withMode(scala.scalanative.build.Mode.releaseFast) },
     libraryDependencies ++= Seq(
       // suit is the toolkit — it owns the SDL3 window/input/present loop and draws through Cairo,
       // and pulls SDL3, Cairo and FreeType in transitively.
