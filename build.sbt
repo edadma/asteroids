@@ -20,7 +20,7 @@ lazy val asteroids = project
     libraryDependencies ++= Seq(
       // suit is the toolkit — it owns the SDL3 window/input/present loop and draws through Cairo,
       // and pulls SDL3, Cairo and FreeType in transitively.
-      "io.github.edadma" %%% "suit" % "0.0.4",
+      "io.github.edadma" %%% "suit" % "0.0.5",
       // sdl3 directly, for its core audio API (the synthesised sound effects).
       "io.github.edadma" %%% "sdl3" % "0.2.5",
     ),

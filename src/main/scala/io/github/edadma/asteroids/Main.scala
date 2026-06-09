@@ -15,14 +15,20 @@ import scala.util.Random
 object Render:
   private val White: Color = Color(224, 226, 235)
   private val Dim: Color   = Color(120, 122, 140)
-  private val Flame: Color = Color(255, 150, 60)
-  private val Shot: Color   = Color(255, 240, 180)
+  private val Flame: Color     = Color(255, 150, 60)
+  private val Shot: Color      = Color(255, 240, 180)
+  private val EnemyShot: Color = Color(255, 110, 110)
 
   def render(c: Canvas, size: Size, s: GameState, thrusting: Boolean, rng: Random): Unit =
     c.fillRect(Rect(0, 0, size.width, size.height), Color.black)
 
     for a <- s.asteroids do drawAsteroid(c, a)
     for bu <- s.bullets do c.fillCircle(Offset(bu.pos.x, bu.pos.y), 2.2, Shot)
+
+    // The saucer and its shots — only while in play (kept frozen on the pause screen).
+    if s.phase == Phase.Playing || s.phase == Phase.Paused then
+      for bu <- s.enemyBullets do c.fillCircle(Offset(bu.pos.x, bu.pos.y), 2.4, EnemyShot)
+      s.saucer.foreach(sc => drawSaucer(c, sc))
 
     // The ship hides on the game-over screen and blinks while invulnerable after a respawn.
     if s.phase != Phase.GameOver then
@@ -50,6 +56,30 @@ object Render:
       val baseR = pos + Vec2.polar(a - 2.7, sz * 0.5)
       c.line(off(baseL), off(tip), 1.6, Flame)
       c.line(off(baseR), off(tip), 1.6, Flame)
+
+  /** The classic flying saucer: a hexagonal hull with a rim line across its widest point and a
+    * dome on top. Scaled by the saucer's collision radius. */
+  private def drawSaucer(c: Canvas, sc: Saucer): Unit =
+    val r  = Const.saucerRadius(sc.small)
+    val cx = sc.pos.x
+    val cy = sc.pos.y
+    val hull = Seq(
+      Vec2(cx - r, cy),
+      Vec2(cx - r * 0.5, cy - r * 0.45),
+      Vec2(cx + r * 0.5, cy - r * 0.45),
+      Vec2(cx + r, cy),
+      Vec2(cx + r * 0.5, cy + r * 0.45),
+      Vec2(cx - r * 0.5, cy + r * 0.45),
+    )
+    closedPoly(c, hull, 1.7, White)
+    c.line(off(Vec2(cx - r, cy)), off(Vec2(cx + r, cy)), 1.7, White)
+    val dome = Seq(
+      Vec2(cx - r * 0.5, cy - r * 0.45),
+      Vec2(cx - r * 0.22, cy - r * 0.85),
+      Vec2(cx + r * 0.22, cy - r * 0.85),
+      Vec2(cx + r * 0.5, cy - r * 0.45),
+    )
+    c.strokePath(Path.polyline(dome.map(v => off(v)), closed = false), White, 1.7, LineJoin.Round)
 
   private def drawAsteroid(c: Canvas, a: Asteroid): Unit =
     val r = Const.radiusFor(a.size)
@@ -86,9 +116,10 @@ object Render:
         centre(c, size, "press ENTER to play again      ESC title", 16, Dim, 58)
       case Phase.Playing => ()
 
+  // A closed outline drawn as one stroked path, so the corners join cleanly (round joins suit the
+  // lumpy rocks and the ship's points).
   private def closedPoly(c: Canvas, pts: Seq[Vec2], w: Double, color: Color): Unit =
-    val n = pts.length
-    for i <- 0 until n do c.line(off(pts(i)), off(pts((i + 1) % n)), w, color)
+    c.strokePath(Path.polyline(pts.map(v => off(v)), closed = true), color, w, LineJoin.Round)
 
   /** Horizontally-centred text, `dy` pixels above/below the vertical middle. The width and line
     * height come from the canvas's own `measureText` — the same measurer `drawText` uses — so
@@ -151,9 +182,14 @@ object Game:
       // Clamp dt so a hitch (or the first frame) can't teleport everything across the screen.
       val dt = if last < 0 then 0.0 else math.min(0.05, (now - last) / 1000.0)
       lastTime.current = now
-      val next = Model.step(state.current, readInput(held.current), dt, rng)
+      val in   = readInput(held.current)
+      val next = Model.step(state.current, in, dt, rng)
       state.current = next
-      // Turn this step's events into sound effects.
+      // Continuous sounds keyed on state: thruster rumble while flying, saucer warble while one is
+      // on screen. One-shot effects for this step's discrete events.
+      val playing = next.phase == Phase.Playing
+      Sound.setThrust(playing && in.thrust)
+      Sound.setSaucer(playing && next.saucer.isDefined, next.saucer.exists(_.small))
       val evs = next.events
       if evs.nonEmpty then evs.foreach(Sound.play)
     }
