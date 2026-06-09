@@ -5,7 +5,19 @@ the Scala Native + SDL3 + Cairo UI toolkit. The whole game is one suit `canvas` 
 a `useFrame` callback steps an immutable `GameState` each frame and the painter draws it
 as white line-work on a black field, the classic arcade look.
 
-## Run
+## Install (macOS, Apple Silicon)
+
+```sh
+brew install --cask edadma/tap/asteroids
+```
+
+This installs **Asteroids.app** (in Launchpad / Applications) and a CLI `asteroids` command, pulling
+the runtime libraries (sdl3, cairo, freetype). Launch it from Launchpad/Spotlight, or run
+`asteroids` from a Terminal in your desktop session. The binary is unsigned, so the first launch
+needs a right-click → **Open** to get past Gatekeeper. (A GUI app only opens a window from the
+logged-in desktop session — running it over SSH or from a non-console shell won't show a window.)
+
+## Build and run from source
 
 ```
 sbt run

@@ -1,4 +1,5 @@
 target/
+dist/
 .bsp/
 .bloop/
 .metals/
